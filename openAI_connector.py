@@ -1,11 +1,12 @@
 import openai
-import random
 import time
+import random
+from datetime import datetime, timedelta
 import requests
 import pyttsx3  # Text-to-speech library (alternatively, use another service like Google TTS)
+from playsound import playsound
 
-# OpenAI API Key
-openai.api_key = "your_openai_api_key"
+
 
 # Agent personas
 personas = {
@@ -13,22 +14,6 @@ personas = {
     "Agent2": {"name": "Bob", "persona": "Bob is an experienced software engineer who loves discussing coding."},
     "Agent3": {"name": "Charlie", "persona": "Charlie is an empathetic therapist who enjoys deep conversations."},
 }
-
-# Function to generate agent responses using OpenAI API
-def generate_agent_response(agent_name, persona, conversation_history):
-    prompt = f"The following conversation is between {agent_name} ({persona}). {conversation_history}\n{agent_name}:"
-    
-    response = openai.Completion.create(
-        model="gpt-4",  # Or use a different model if desired
-        prompt=prompt,
-        max_tokens=150,
-        temperature=0.7
-    )
-    
-    return response.choices[0].text.strip()
-
-
-
 
 
 def prompt_llama(api_url, api_key, prompt_text, max_tokens=100, temperature=0.7):
@@ -77,50 +62,50 @@ def prompt_llama(api_url, api_key, prompt_text, max_tokens=100, temperature=0.7)
         return ""
 
 
-# Function to convert text to speech (audio)
+# Function to convert text to speech and play it
 def text_to_speech(text, filename):
     engine = pyttsx3.init()
+    # Save speech to file
     engine.save_to_file(text, filename)
-    engine.runAndWait()
+    engine.runAndWait()  # Wait until the file generation is complete
+
+    # Play the generated audio file and wait for it to finish
+    playsound(filename)
+
+
 
 # Simulate the conversation
-def simulate_conversation(num_agents, max_turns=20):
+def simulate_conversation(num_agents, duration_minutes=1):
     conversation_history = ""
     agents = list(personas.keys())
-    
-    for turn in range(max_turns):
-        agent = random.choice(agents)  # Randomly select an agent to speak
-        agent_name = personas[agent]["name"]
-        agent_persona = personas[agent]["persona"]
+    start_time = datetime.now()
+    end_time = start_time + timedelta(minutes=duration_minutes)
+    lastSpoke = ""
+    agent = "Default"
 
-        # Generate response from the selected agent
-        response = generate_agent_response(agent_name, agent_persona, conversation_history)
-        
+    turn = 0
+    while datetime.now() < end_time:
+        # select an agent to speak (shouldn't be the last agent)
+        while agent != lastSpoke:
+            agent = random.choice(agents)  # Randomly select an agent to speak
+            agent_name = personas[agent]["name"]
+            agent_persona = personas[agent]["persona"]
+
+        # TODO: Generate response from the selected agent.
+        # Should use the persona for the person.
+        response = None
+
+
         # Add agent's response to conversation history
         conversation_history += f"\n{agent_name}: {response}"
 
-        # Convert the response to audio
-        audio_filename = f"agent_{agent_name}_turn_{turn}.mp3"
-        text_to_speech(response, audio_filename)
+        # Convert all responses to audio
+        audio_filename = f"testrun/agent_{agent_name}_turn_{turn}.mp3"
+        text_to_speech(response, audio_filename) # will wait for audio to finish before cont.
 
-        # Simulate interruptions with random chance
-        if random.random() < 0.2:  # 20% chance for an interruption
-            interrupting_agent = random.choice(agents)
-            while interrupting_agent == agent:  # Ensure the interrupter is not the same agent
-                interrupting_agent = random.choice(agents)
-            
-            interrupt_response = generate_agent_response(
-                personas[interrupting_agent]["name"],
-                personas[interrupting_agent]["persona"],
-                conversation_history
-            )
-            
-            # Update history and audio for the interrupting agent
-            conversation_history += f"\n{personas[interrupting_agent]['name']}: {interrupt_response}"
-            interrupt_audio_filename = f"agent_{personas[interrupting_agent]['name']}_interrupt_{turn}.mp3"
-            text_to_speech(interrupt_response, interrupt_audio_filename)
+        turn += 1  # Increment the turn count for file naming
 
-        time.sleep(1)  # Wait for a moment before the next turn
 
 if __name__ == "__main__":
-    simulate_conversation(num_agents=3, max_turns=10)
+    simulate_conversation(num_agents=3, duration_minutes=5)
+
