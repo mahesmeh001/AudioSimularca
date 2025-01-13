@@ -4,7 +4,7 @@ import random
 from datetime import datetime, timedelta
 import requests
 import pyttsx3  # Text-to-speech library (alternatively, use another service like Google TTS)
-from playsound import playsound
+from playsound import playsound # will actually play the sound, and wait before continuing.
 
 
 
@@ -62,15 +62,23 @@ def prompt_llama(api_url, api_key, prompt_text, max_tokens=100, temperature=0.7)
         return ""
 
 
-# Function to convert text to speech and play it
-def text_to_speech(text, filename):
+
+def sim_speak(text, filename):
     engine = pyttsx3.init()
+
+    # Get the speaking rate (words per minute)
+    rate = engine.getProperty("rate")  # Default is typically around 200 words per minute
+
+    # Calculate the duration of the speech
+    words = len(text.split())
+    speaking_duration = words / (rate / 60)  # Time in seconds
+
     # Save speech to file
     engine.save_to_file(text, filename)
-    engine.runAndWait()  # Wait until the file generation is complete
+    engine.runAndWait()  # Wait until the file is generated
 
-    # Play the generated audio file and wait for it to finish
-    playsound(filename)
+    # Wait for the speech duration
+    time.sleep(speaking_duration)
 
 
 
@@ -101,7 +109,7 @@ def simulate_conversation(num_agents, duration_minutes=1):
 
         # Convert all responses to audio
         audio_filename = f"testrun/agent_{agent_name}_turn_{turn}.mp3"
-        text_to_speech(response, audio_filename) # will wait for audio to finish before cont.
+        sim_speak(response, audio_filename) # will wait appropriate time before cont.
 
         turn += 1  # Increment the turn count for file naming
 
