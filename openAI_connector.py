@@ -4,62 +4,34 @@ import random
 from datetime import datetime, timedelta
 import requests
 import pyttsx3  # Text-to-speech library (alternatively, use another service like Google TTS)
-from playsound import playsound # will actually play the sound, and wait before continuing.
+import transformers
+import torch
 
 
 
 # Agent personas
+# TODO: Automate persona generation
 personas = {
     "Agent1": {"name": "Alice", "persona": "Alice is a friendly and curious researcher."},
     "Agent2": {"name": "Bob", "persona": "Bob is an experienced software engineer who loves discussing coding."},
     "Agent3": {"name": "Charlie", "persona": "Charlie is an empathetic therapist who enjoys deep conversations."},
 }
 
+# LLM setup
+model_id = "meta-llama/Meta-Llama-3-8B"
+pipeline = transformers.pipeline("text-generation", model=model_id, model_kwargs={"torch_dtype": torch.bfloat16}, device_map="auto")
+pipeline("Hey how are you doing today?")
 
-def prompt_llama(api_url, api_key, prompt_text, max_tokens=100, temperature=0.7):
-    """
-    Sends a prompt to the Llama model and retrieves the response.
+def prompt_llama(message, persona):
+    "responsible for prompting LLM"
 
-    Parameters:
-        api_url (str): The API endpoint for the Llama model.
-        api_key (str): Your API key for authentication.
-        prompt_text (str): The text prompt to send to the model.
-        max_tokens (int): The maximum number of tokens to generate. Default is 100.
-        temperature (float): Sampling temperature for response creativity. Default is 0.7.
+    # TODO: Add more robust prompting
 
-    Returns:
-        str: The generated response from the model.
+    # add persona to message
+    if persona:
+        message = persona + message
 
-
-    # # Example usage:
-# api_url = "https://api.llama-model.com/v1/completions"  # Replace with actual API URL
-# api_key = "your-api-key"  # Replace with your API key
-# prompt_text = "Once upon a time in a magical forest, there lived a..."
-#
-# response = prompt_llama(api_url, api_key, prompt_text)
-# print("Llama's Response:", response)
-
-
-    """
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json"
-    }
-
-    payload = {
-        "prompt": prompt_text,
-        "max_tokens": max_tokens,
-        "temperature": temperature
-    }
-
-    try:
-        response = requests.post(api_url, headers=headers, json=payload)
-        response.raise_for_status()
-        data = response.json()
-        return data.get("text", "")
-    except requests.exceptions.RequestException as e:
-        print(f"An error occurred: {e}")
-        return ""
+    return pipeline(message)
 
 
 
@@ -68,6 +40,8 @@ def sim_speak(text, filename):
 
     # Get the speaking rate (words per minute)
     rate = engine.getProperty("rate")  # Default is typically around 200 words per minute
+
+    # also needs to consider things like tone, emotion, speaking rate. Ideally this would happen later later?
 
     # Calculate the duration of the speech
     words = len(text.split())
@@ -83,7 +57,7 @@ def sim_speak(text, filename):
 
 
 # Simulate the conversation
-def simulate_conversation(num_agents, duration_minutes=1):
+def simulate_conversation(num_agents=3, duration_minutes=1):
     conversation_history = ""
     agents = list(personas.keys())
     start_time = datetime.now()
@@ -115,5 +89,5 @@ def simulate_conversation(num_agents, duration_minutes=1):
 
 
 if __name__ == "__main__":
-    simulate_conversation(num_agents=3, duration_minutes=5)
+    simulate_conversation()
 
