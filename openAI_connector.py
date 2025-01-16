@@ -13,13 +13,35 @@ from transformers import pipeline, AutoTokenizer
 # Agent personas
 # TODO: Automate persona generation (using number of agents)
 personas = {
-    "Agent1": {"name": "Alice", "persona": "Alice is a friendly and curious researcher."},
-    "Agent2": {"name": "Bob", "persona": "Bob is an experienced software engineer who loves discussing coding."},
-    "Agent3": {"name": "Charlie", "persona": "Charlie is an empathetic therapist who enjoys deep conversations."},
+    "Agent1": {"name": "Joe",
+               "persona": "Joe is a 68-year-old retired factory worker living in a small town. While he’s no longer "
+                          "in the workforce, he keeps up with the job market to advise his grandchildren. Joe feels "
+                          "that jobs today are more demanding in terms of education and skills than in his time. He "
+                          "often reflects on how stable factory jobs have been replaced by automation and gig work, "
+                          "leaving him concerned about the younger generation's ability to find secure, "
+                          "lifelong careers."},
+    "Agent2": {"name": "Ravi",
+               "persona": "Ravi is a 35-year-old mid-career software engineer working in the tech industry, living in "
+                          "a tech hub like San Francisco. He is employed but cautious due to recent layoffs in his "
+                          "field and the increasing demand for specialization in AI and cloud computing. Ravi sees "
+                          "opportunities in upskilling but worries about the pressure to stay ahead in a rapidly "
+                          "evolving market."},
+    "Agent3": {"name": "Emily",
+               "persona": "Emily is a 22-year-old recent graduate in marketing living in a bustling metropolitan "
+                          "area. She is currently unemployed and actively job hunting. Emily is optimistic but feels "
+                          "overwhelmed by the competition and the need for internships or unpaid roles to gain "
+                          "experience. She’s concerned about the scarcity of entry-level positions and the emphasis "
+                          "on digital marketing skills she didn’t focus on during her studies."},
+}
+
+agent_voices = {
+    "Agent1": "com.apple.eloquence.en-US.Grandpa",
+    "Agent2": "com.apple.voice.compact.en-GB.Daniel",
+    "Agent3": "com.apple.eloquence.en-US.Flo"
 }
 
 # LLM setup
-model_id = "meta-llama/Llama-3.2-1B"
+model_id = "meta-llama/Llama-3.2-3B"
 pipe = pipeline(
     "text-generation",
     model=model_id,
@@ -42,7 +64,6 @@ def prompt_llama(agent, conversation_history, max_new_tokens=512, temperature=0.
     Returns:
         str: The generated response without the prompt
     """
-    #TODO: Fix conversation history to be a list of dictionaries for the prompting part
     print('prompting llm...')
     agent_name = personas[agent]["name"]
     agent_persona = personas[agent]["persona"]
@@ -73,12 +94,12 @@ def prompt_llama(agent, conversation_history, max_new_tokens=512, temperature=0.
     final_prompt = "\n".join(prompt_sections)
 
     # maybe the number of tokens get set dynamically based on how relevant it is to the person?
-    new_tokens = random.randrange(30, 71, 8)
-    min_tokens = 50
+    new_tokens = random.randrange(50, 201, 15)
+    min_tokens = 100
     tokenizer = AutoTokenizer.from_pretrained(model_id)
     # Update pipeline parameters for longer output
-    response = pipe(final_prompt, min_new_tokens=min_tokens, max_new_tokens=new_tokens + min_tokens,
-                    stop_strings=[".", "?", "!"], return_full_text=False, num_beams=2, tokenizer=tokenizer)
+    response = pipe(final_prompt, min_new_tokens=min_tokens, max_new_tokens= new_tokens + min_tokens,
+                    stop_strings=[".", "?", "!"], return_full_text=False, tokenizer=tokenizer)
     # another variable for how long they haven't spoken
 
     full_text = response[0]['generated_text']
@@ -94,47 +115,40 @@ def prompt_llama(agent, conversation_history, max_new_tokens=512, temperature=0.
     return message
 
 
-def sim_speak(text, filename):
+def sim_speak(text, agent, filename=""):
     """
-    Converts text to speech and saves it to a file while handling the timing accurately.
+    Speaks the given text and saves it to a new audio file.
 
     Args:
-        text (str): The text to convert to speech
-        filename (str): Output audio file path
+        text (str): The text to convert to speech.
+        filename (str): Output audio file path.
+
+    Returns:
+        float: The duration of the audio in seconds.
     """
-    try:
-        engine = pyttsx3.init()
+    engine = pyttsx3.init()
+    engine.setProperty('voice',agent_voices[agent])
+    engine.say(text)
+    # engine.save_to_file(text, filename)
+    engine.runAndWait()
 
-        # Get the speaking rate
-        rate = engine.getProperty("rate")
-
-        # Save speech to file
-        engine.save_to_file(text, filename)
-        engine.runAndWait()
-
-        # Calculate more accurate duration using the audio file
-        try:
-            with wave.open(filename, 'rb') as audio_file:
-                frames = audio_file.getnframes()
-                rate = audio_file.getframerate()
-                duration = frames / float(rate)
-                return duration
-        except:
-            # Fallback duration calculation if file reading fails
-            words = len(text.split())
-            return words / (rate / 60)  # Approximate duration in seconds
-
-    finally:
-        # Properly dispose of the engine
-        engine.stop()
-
-    return 0  # Return 0 if everything fails
+    # Calculate duration using the generated audio file
+    # with wave.open(filename, 'rb') as audio_file:
+    #     frames = audio_file.getnframes()
+    #     rate = audio_file.getframerate()
+    #     return frames / float(rate)
 
 
 
 # Simulate the conversation
-def simulate_conversation(discussion_starter, num_agents=3, duration_minutes=.5):
+def simulate_conversation(discussion_starter, num_agents=3, duration_minutes=2):
     conversation_history = discussion_starter
+
+    engine = pyttsx3.init()
+    engine.say(discussion_starter)
+    engine.runAndWait()
+    engine.stop()
+
     agents = list(personas.keys())
     start_time = datetime.now()
     end_time = start_time + timedelta(minutes=duration_minutes)
@@ -160,9 +174,17 @@ def simulate_conversation(discussion_starter, num_agents=3, duration_minutes=.5)
 
         # Convert all responses to audio
         audio_filename = f"testrun/agent_{agent_name}_turn_{turn}.wav"
-        sim_speak(response, audio_filename) # will wait appropriate time before cont.
+        sim_speak(response, agent, audio_filename) # will wait appropriate time before cont.
 
         turn += 1  # Increment the turn count for file naming
 
+    # after conversation, save transcript
+    file_path = 'transcript.txt'
+    with open(file_path, "w") as file:
+        file.write(conversation_history)
+
+    print(f"Transcript saved to {file_path}")
+
+
 if __name__ == "__main__":
-    simulate_conversation("what are your thoughts on the current job market?")
+    simulate_conversation("What are your thoughts on the current job market?")
