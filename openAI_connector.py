@@ -14,24 +14,13 @@ from transformers import pipeline, AutoTokenizer
 # TODO: Automate persona generation (using number of agents)
 personas = {
     "Agent1": {"name": "Joe",
-               "persona": "Joe is a 68-year-old retired factory worker living in a small town. While he’s no longer "
-                          "in the workforce, he keeps up with the job market to advise his grandchildren. Joe feels "
-                          "that jobs today are more demanding in terms of education and skills than in his time. He "
-                          "often reflects on how stable factory jobs have been replaced by automation and gig work, "
-                          "leaving him concerned about the younger generation's ability to find secure, "
-                          "lifelong careers."},
+               "persona": "Joe, a retired factory worker, is concerned that automation and gig work have replaced "
+                          "stable careers, making it harder for younger generations to find secure jobs. He is also "
+                          "very stubborn."},
     "Agent2": {"name": "Ravi",
-               "persona": "Ravi is a 35-year-old mid-career software engineer working in the tech industry, living in "
-                          "a tech hub like San Francisco. He is employed but cautious due to recent layoffs in his "
-                          "field and the increasing demand for specialization in AI and cloud computing. Ravi sees "
-                          "opportunities in upskilling but worries about the pressure to stay ahead in a rapidly "
-                          "evolving market."},
+               "persona": "Ravi, a 35-year-old software engineer, works in a bustling tech hub and believes that securing a job is primarily a matter of determination and confidence. He sees opportunities as abundant for those who are proactive and willing to push through challenges. With a natural charm and strong networking skills, Ravi often leverages his personal connections to open doors and build relationships. His charisma and confidence often inspire those around him, and he is a strong advocate for continual self-improvement and perseverance."},
     "Agent3": {"name": "Emily",
-               "persona": "Emily is a 22-year-old recent graduate in marketing living in a bustling metropolitan "
-                          "area. She is currently unemployed and actively job hunting. Emily is optimistic but feels "
-                          "overwhelmed by the competition and the need for internships or unpaid roles to gain "
-                          "experience. She’s concerned about the scarcity of entry-level positions and the emphasis "
-                          "on digital marketing skills she didn’t focus on during her studies."},
+               "persona": "Emily, a 22-year-old phd candidate and knows people with talent who have gone jobless. She is also very shy but wants to speak her mind."},
 }
 
 agent_voices = {
@@ -41,7 +30,7 @@ agent_voices = {
 }
 
 # LLM setup
-model_id = "meta-llama/Llama-3.2-3B"
+model_id = "meta-llama/Llama-3.2-1B"
 pipe = pipeline(
     "text-generation",
     model=model_id,
@@ -64,9 +53,10 @@ def prompt_llama(agent, conversation_history, max_new_tokens=512, temperature=0.
     Returns:
         str: The generated response without the prompt
     """
-    print('prompting llm...')
     agent_name = personas[agent]["name"]
     agent_persona = personas[agent]["persona"]
+    print('prompting', agent_name)
+
 
     prompt_sections = [
         # System instructions section
@@ -94,15 +84,26 @@ def prompt_llama(agent, conversation_history, max_new_tokens=512, temperature=0.
     final_prompt = "\n".join(prompt_sections)
 
     # maybe the number of tokens get set dynamically based on how relevant it is to the person?
-    new_tokens = random.randrange(50, 201, 15)
-    min_tokens = 100
+    new_tokens = random.randrange(50, 150, 25)
+    min_tokens = 50
     tokenizer = AutoTokenizer.from_pretrained(model_id)
     # Update pipeline parameters for longer output
-    response = pipe(final_prompt, min_new_tokens=min_tokens, max_new_tokens= new_tokens + min_tokens,
-                    stop_strings=[".", "?", "!"], return_full_text=False, tokenizer=tokenizer)
+    response = pipe(final_prompt,
+                    min_new_tokens=min_tokens,
+                    max_new_tokens=new_tokens + min_tokens,
+                    return_full_text=False,
+                    tokenizer=tokenizer,
+                    pad_token_id=50256,  # Define padding token
+                    no_repeat_ngram_size=2, # avoids repeats
+                    temperature = 0.9,  # Slightly more randomness
+                    top_p = 0.95,  # Nucleus sampling
+                    stop_strings=["?"]
+    )
+    # stop_strings = [".", "?", "!"]
     # another variable for how long they haven't spoken
 
     full_text = response[0]['generated_text']
+    print(full_text)
 
 
     # Extract only the generated response after the marker
@@ -187,4 +188,4 @@ def simulate_conversation(discussion_starter, num_agents=3, duration_minutes=2):
 
 
 if __name__ == "__main__":
-    simulate_conversation("What are your thoughts on the current job market?")
+    simulate_conversation("What are your thoughts on the current job market?", duration_minutes=5)
