@@ -11,17 +11,42 @@ import torch
 from transformers import pipeline, AutoTokenizer
 
 # Agent personas
-# TODO: Automate persona generation (using number of agents)
+# TODO: Automate persona generation (using number of agents). First we need to figure out what makes a good persona
+
+
 personas = {
-    "Agent1": {"name": "Joe",
-               "persona": "Joe, a retired factory worker, is concerned that automation and gig work have replaced "
-                          "stable careers, making it harder for younger generations to find secure jobs. He is also "
-                          "very stubborn."},
-    "Agent2": {"name": "Ravi",
-               "persona": "Ravi, a 35-year-old software engineer, works in a bustling tech hub and believes that securing a job is primarily a matter of determination and confidence. He sees opportunities as abundant for those who are proactive and willing to push through challenges. With a natural charm and strong networking skills, Ravi often leverages his personal connections to open doors and build relationships. His charisma and confidence often inspire those around him, and he is a strong advocate for continual self-improvement and perseverance."},
-    "Agent3": {"name": "Emily",
-               "persona": "Emily, a 22-year-old phd candidate and knows people with talent who have gone jobless. She is also very shy but wants to speak her mind."},
+    # For + Very Related Interests
+    "Agent1": {
+        "name": "Sophia",
+        "persona": "Sophia, a 28-year-old public policy analyst who specializes in labor rights and automation policy. She is passionate about ensuring workers have access to fair opportunities and believes innovation should align with ethical labor practices. She is a staunch supporter of policies that protect workers in the gig economy."
+    },
+    # For + Very Non-Related Interests
+    "Agent2": {
+        "name": "Carlos",
+        "persona": "Carlos, a 41-year-old art historian and professor who has a deep love for Renaissance art and cultural heritage. Although his primary interests are unrelated to labor rights or gig economy issues, he supports worker advocacy because of his belief in societal fairness and cultural equity."
+    },
+    # Neutral + Very Related Interests
+    "Agent3": {
+        "name": "Mia",
+        "persona": "Mia, a 34-year-old freelance UX designer who has been navigating the gig economy for the past 10 years. She sees both the positives and negatives of freelance work, from flexibility to instability. She remains neutral in conversations, as her experiences have shown her both sides of the argument."
+    },
+    # Neutral + Very Non-Related Interests
+    "Agent4": {
+        "name": "Leo",
+        "persona": "Leo, a 27-year-old wildlife biologist who spends most of his time in remote field stations studying endangered species. While not personally involved in labor rights or gig economy debates, he recognizes their importance but doesn’t feel strongly for or against."
+    },
+    # Against + Very Related Interests
+    "Agent5": {
+        "name": "Ahmed",
+        "persona": "Ahmed, a 50-year-old small business owner who used to employ a team but lost customers to gig economy services. He sees the gig economy as a threat to traditional businesses and believes it exploits workers under the guise of flexibility."
+    },
+    # Against + Very Non-Related Interests
+    "Agent6": {
+        "name": "Olivia",
+        "persona": "Olivia, a 62-year-old retired opera singer who has little direct connection to gig economy issues. However, she strongly opposes its rise, believing it fosters a culture of disposability that undermines the arts and long-term societal investments."
+    }
 }
+
 
 agent_voices = {
     "Agent1": "com.apple.eloquence.en-US.Grandpa",
@@ -30,10 +55,10 @@ agent_voices = {
 }
 
 # LLM setup
-model_id = "meta-llama/Llama-3.2-1B"
-pipe = pipeline(
+model_1 = "meta-llama/Llama-3.2-1B"
+pipe1 = pipeline(
     "text-generation",
-    model=model_id,
+    model=model_1,
     torch_dtype=torch.bfloat16,
     device_map="auto"
 )
@@ -86,9 +111,9 @@ def prompt_llama(agent, conversation_history, max_new_tokens=512, temperature=0.
     # maybe the number of tokens get set dynamically based on how relevant it is to the person?
     new_tokens = random.randrange(50, 150, 25)
     min_tokens = 50
-    tokenizer = AutoTokenizer.from_pretrained(model_id)
+    tokenizer = AutoTokenizer.from_pretrained(model_1)
     # Update pipeline parameters for longer output
-    response = pipe(final_prompt,
+    response = pipe1(final_prompt,
                     min_new_tokens=min_tokens,
                     max_new_tokens=new_tokens + min_tokens,
                     return_full_text=False,
@@ -140,7 +165,6 @@ def sim_speak(text, agent, filename=""):
     #     return frames / float(rate)
 
 
-
 # Simulate the conversation
 def simulate_conversation(discussion_starter, num_agents=3, duration_minutes=2):
     conversation_history = discussion_starter
@@ -185,6 +209,9 @@ def simulate_conversation(discussion_starter, num_agents=3, duration_minutes=2):
         file.write(conversation_history)
 
     print(f"Transcript saved to {file_path}")
+
+
+# todo: automate response collection for a given conversation based on a few personality traits. Then create a grid of responses and store there based on categorization
 
 
 if __name__ == "__main__":
